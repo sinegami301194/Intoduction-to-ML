@@ -1,4 +1,4 @@
-import pandas
+import pandas # Import library
 outFile = open('output.txt', 'w', encoding='utf8')
 data = pandas.read_csv('titanic.csv', index_col='PassengerId')
 A = list(data['Sex'].value_counts())
