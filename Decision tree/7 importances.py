@@ -1,5 +1,6 @@
 # Download a sample from the titanic.csv file using the Pandas package
 import pandas
+import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 outFile = open('output.txt', 'w', encoding='utf8')
 data = pandas.read_csv('titanic.csv', index_col='PassengerId')
@@ -18,4 +19,8 @@ clf = DecisionTreeClassifier(random_state=241)
 clf.fit(X, y)
 # Calculate the importance of signs and find the two signs with the greatest importance
 importances = clf.feature_importances_
-print(importances[0], importances[1], end='', file=outFile)
+a = np.array(importances).argmax()
+print(x_labels[a], end=' ', file=outFile)
+importances[a] = 0
+b = np.array(importances).argmax()
+print(x_labels[b], end='', file=outFile)
