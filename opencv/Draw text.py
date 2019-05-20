@@ -1,5 +1,5 @@
 # Open image
-import cv2
+import cv2 # Import library
 
 def viewImage(image, name_of_window):
     cv2.namedWindow(name_of_window, cv2.WINDOW_NORMAL)
