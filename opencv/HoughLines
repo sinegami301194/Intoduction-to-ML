@@ -18,6 +18,9 @@ try:
 except AttributeError:
     range = 0
 
+roi = threshold[60:160, 320:420]
+
+
 for i in range(0, range1):
     for rho, theta in lines[i]:
         if rho > 0 and (np.pi*1/10 < theta < np.pi*4/10):
