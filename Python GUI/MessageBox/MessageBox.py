@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets, uic
+from PyQt5 import QtWidgets, uic # Import libraries
 from PyQt5.QtWidgets import *
 
 def Convert():
