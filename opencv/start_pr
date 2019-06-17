@@ -1,0 +1,1 @@
+segmentit --sgm_cfg=../config/drivarea/bisenet_5.yaml --input_path=/home/alpatikov_i/Pictures/p2.jpg --output_path=/home/alpatikov_i/Pictures/out1.png
