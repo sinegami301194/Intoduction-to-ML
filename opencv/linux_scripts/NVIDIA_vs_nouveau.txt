@@ -1,0 +1,11 @@
+﻿How to install Nvidia Graphics Driver on Ubuntu 18.04 instead of nouveau:
+
+1) System settings → Details → Owerview
+	Check “Graphics”
+2) Open “Software & Updates”
+3) Click “Additional Drivers”
+4) Click “Using NVIDIA driver metapackage from nvidia-driver-390 (property, tested)”
+5) Click “Apply Changes”
+6) Reboot your computer
+7) System settings → Details → Owerview
+	“Graphics” has changed
