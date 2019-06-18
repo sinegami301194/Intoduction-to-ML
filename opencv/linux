@@ -2,3 +2,5 @@ lib - библиотеки
 bin - исполняемые файлы
 ect - конфиги
 var - данные разного рода
+sudo apt autoremove
+sudo apt install nvidia-384 - драйвер NVidia, совместимый с Cuda 10.0
