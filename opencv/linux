@@ -4,3 +4,15 @@ ect - конфиги
 var - данные разного рода
 sudo apt autoremove
 sudo apt install nvidia-384 - драйвер NVidia, совместимый с Cuda 10.0
+apt list | grep nvidia
+nvidia-smi
+nvcc --versoin
+pip3 freeze
+dpkg -l | grep -i nvidia
+sudo apt-get install filezilla
+ls -la
+lspsi |grep nvidia
+modeprobe -h
+modeprobe -c nvidia
+cd ../../../
+echo $PATH
