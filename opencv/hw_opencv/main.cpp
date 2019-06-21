@@ -19,7 +19,9 @@ int main(int argc, char* argv[])
     Mat img = imread(Image_PATH, IMREAD_COLOR);
 
     rectangle(img,Rect(210,80,50,40), Scalar(255,128,128),2);
-
+    putText(img, "Differencing the two images.", cvPoint(30,30),
+            FONT_HERSHEY_COMPLEX_SMALL, 1.0, cvScalar(255,1,128), 1, CV_AA);
+    
     namedWindow("win",WINDOW_AUTOSIZE);
     imshow("win",img);
     waitKey(0);
