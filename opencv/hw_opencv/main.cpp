@@ -18,6 +18,8 @@ int main(int argc, char* argv[])
     string Image_PATH = "/home/alpatikov_i/Pictures/p2.jpg";
     Mat img = imread(Image_PATH, IMREAD_COLOR);
 
+    rectangle(img,Rect(210,80,50,40), Scalar(255,128,128),2);
+
     namedWindow("win",WINDOW_AUTOSIZE);
     imshow("win",img);
     waitKey(0);
