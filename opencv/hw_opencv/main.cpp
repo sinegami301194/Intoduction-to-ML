@@ -3,7 +3,12 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-//#include <ar10/ocvgui.h> // for argui::imshow and etc.
+//#include <ocvgui.h>
+#include <ar10/ocvgui.h>
+#include <arcore/markup_reader.h>
+#include <framedata/framedata.h>
+#include <QtXml>
+#include <QFile>
 
 #include <string>
 #include <iostream>
@@ -11,6 +16,23 @@
 using namespace std;
 using namespace cv;
 
+bool read_from_XML(string &word)
+{
+    //The QDomDocument class represents an XML document.
+    QDomDocument xmlBOM;
+    // Load xml file as raw data
+    QFile f("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/tor.028.021.left.avi.frameData.xml");
+    if (!f.open(QIODevice::ReadOnly ))
+    {
+        // Error while loading file
+        std::cerr << "Error while loading file" << std::endl;
+        return 1;
+    }
+    // Set data into the QDomDocument before processing
+    xmlBOM.setContent(&f);
+    f.close();
+    return true;
+}
 
 int main(int argc, char* argv[])
 {
@@ -19,6 +41,7 @@ int main(int argc, char* argv[])
     string Image_PATH = "/home/alpatikov_i/Pictures/p2.jpg";
     string Text_info;
     const String& Video_PATH = "/testdata/tor/inp/tor.028/tor.028.021.left.avi";
+    string word;
 
     //Mat img = imread(Image_PATH, IMREAD_COLOR);
     Mat frame;
