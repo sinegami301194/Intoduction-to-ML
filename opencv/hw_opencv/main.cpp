@@ -16,7 +16,10 @@
 using namespace std;
 using namespace cv;
 
-bool read_from_XML(string &word)
+//https://www.lucidar.me/en/dev-c-cpp/reading-xml-files-with-qt/
+//http://doc.crossplatform.ru/qt/4.7.x/qstring.html
+
+bool load_from_XML(string &word)
 {
     //The QDomDocument class represents an XML document.
     QDomDocument xmlBOM;
@@ -25,12 +28,30 @@ bool read_from_XML(string &word)
     if (!f.open(QIODevice::ReadOnly ))
     {
         // Error while loading file
-        std::cerr << "Error while loading file" << std::endl;
+        cerr << "Error while loading file" << endl;
         return 1;
     }
     // Set data into the QDomDocument before processing
     xmlBOM.setContent(&f);
     f.close();
+    return true;
+}
+
+bool read_from_XML(QDomDocument &xmlBOM)
+{
+    // Extract the root markup
+    QDomElement root = xmlBOM.documentElement();
+
+    // Get root names and attributes
+    QString Type=root.tagName();
+    QString Board=root.attribute("BOARD","No name");
+    int Year=root.attribute("YEAR","1900").toInt();
+
+    // Display root data
+    cout << "Type  = " << Type.toStdString().c_str() << endl;
+    cout << "Board = " << Board.toStdString().c_str() << endl;
+    cout << "Year  = " << Year << endl;
+    cout << endl;
     return true;
 }
 
