@@ -6,4 +6,5 @@ Day 4: Собрал navigator, скачал testdata models, запустил na
 Day 5: Прогнал navigator на других testdata models, накатил патч, откатил. Писал С++ код и запускал в Terminal.
 Day 6: Накатил другой патч, запустил navigator с другим yaml-config. Set Qt Creator.
 Day 7: Изучал проект компании, начал делать приложение на OpenCV, нарисовал rectangle,извлёк кадр из *.avi.
-Day 8: Подключал внешний header через cmake.
+Day 8: Подключал внешний header через cmake, загрузил data из XML-файла.
+Day 9: Прочёл data из XML.
