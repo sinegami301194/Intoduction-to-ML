@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 
     // ===LOAD_AND_READ_FROM_XML===
     load_from_XML(XML_PATH, xmlBOM);
-    read_from_XML(xmlBOM);
+    read_from_XML(xmlBOM); // Reading first node
 
 
 
