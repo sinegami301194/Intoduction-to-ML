@@ -37,10 +37,10 @@ bool load_from_XML(const char* word, QDomDocument xmlBOM)
     return true;
 }
 
-bool read_from_XML(QDomDocument &xmlBOM)
+bool read_from_XML(QDomDocument &xmlBOM, QDomElement &root)
 {
     // Extract the root markup
-    QDomElement root = xmlBOM.documentElement();
+    root = xmlBOM.documentElement();
 
     // Get root names and attributes
     QString Type=root.tagName();
@@ -67,13 +67,59 @@ int main(int argc, char* argv[])
     // ===OTHER_VARIABLES_DECLARATION===
     string Text_info;
     QDomDocument xmlBOM;
+    QDomElement root;
 
     // ===LOAD_AND_READ_FROM_XML===
     load_from_XML(XML_PATH, xmlBOM);
-    read_from_XML(xmlBOM); // Reading first node
+    read_from_XML(xmlBOM, root); // Reading first node
+
+    // ===DATA_ACCESS===
+    // Get the first child of the root (Markup COMPONENT is expected)
+
+    QDomElement Component=root.firstChild().toElement();
+
+
+    // Loop while there is a child
+    while(!Component.isNull())
+    {
+        // Check if the child tag name is COMPONENT
+        if (Component.tagName()=="COMPONENT")
+        {
+
+            // Read and display the component ID
+            QString ID=Component.attribute("ID","No ID");
+
+            // Get the first child of the component
+            QDomElement Child=Component.firstChild().toElement();
+
+            QString Name;
+            double Value;
+
+            // Read each child of the component node
+            while (!Child.isNull())
+            {
+                // Read Name and value
+                if (Child.tagName()=="NAME") Name=Child.firstChild().toText().data();
+                if (Child.tagName()=="VALUE") Value=Child.firstChild().toText().data().toDouble();
+
+                // Next child
+                Child = Child.nextSibling().toElement();
+            }
+
+            // Display component data
+            std::cout << "Component " << ID.toStdString().c_str() << std::endl;
+            std::cout << "   Name  = " << Name.toStdString().c_str() << std::endl;
+            std::cout << "   Value = " << Value << std::endl;
+            std::cout << std::endl;
+        }
+
+        // Next component
+        Component = Component.nextSibling().toElement();
+    }
 
 
 
+    //===WORK_WITH_IMAGE===
     //Mat img = imread(Image_PATH, IMREAD_COLOR);
     Mat frame;
     VideoCapture cap(Video_PATH);
