@@ -16,10 +16,9 @@
 using namespace std;
 using namespace cv;
 
+// Usefull links:
 //https://www.lucidar.me/en/dev-c-cpp/reading-xml-files-with-qt/
 //http://doc.crossplatform.ru/qt/4.7.x/qstring.html
-
-
 
 int main(int argc, char* argv[])
 {
@@ -38,7 +37,7 @@ int main(int argc, char* argv[])
 
 
     // ===LOAD_AND_READ_FROM_XML===
-    QFile f("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/test.xml");
+    QFile f("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/test.xml"); // Load XML from path
     if (!f.open(QIODevice::ReadOnly ))
     {
         // Error while loading file
@@ -46,92 +45,56 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (xmlBOM.setContent(&f))
+    if (xmlBOM.setContent(&f)) // Fill the data from XML
     {
         cout << "Set is contained" << endl;
-    }
-    else
-    {
-        cout << "Bad XML from BOM" << endl;
     }
     f.close();
 
     // ===DATA_ACCESS===
     QDomElement root = xmlBOM.documentElement();
-    QDomElement Component=root.firstChild().toElement();
+    QDomElement Component=root.firstChild().toElement(); // Set Component as "FrameDataArray"
 
-
-    while(!Component.isNull())
+    while(!Component.isNull()) // Start reading in the "FrameDataArray"
     {
-        cout << "1 check PASS" << endl;
         // Check if the child tag name is COMPONENT
         if (Component.tagName()=="FrameDataArray")
         {
-            cout << "2 check PASS" << endl;
-            // Read and display the component ID
-            //QString ID=Component.attribute("ID","No ID");
-
             // Get the first child of the component
-            QDomElement Child=Component.firstChild().toElement();
+            QDomElement Child=Component.firstChild().toElement(); // Get first <_>
 
+            // ===VARIABLE_DECLARATION===
             QString Name;
-            int Q1;
-            double Value;
-            int n = 0; // Counter for <_>
 
             // Read each child of the component node
             while (!Child.isNull())
             {
-                n++;
-                cout << "3 check PASS " << n << endl;
-
-                // Read Name and value
                 if (Child.tagName()=="_") // Into the <_>
                 {
-                    cout << "in the <_Circle>" << endl;
-                    //Name=Child.firstChild().toText().data();
-
-                    QDomElement Child1=Child.firstChild().toElement();
-                                if (Child1.tagName()=="FrameNumber")
-                                    {
-                                        cout << "printed 1 FrameNumber" << endl;
-                                        Child1 = Child1.nextSibling().toElement();
-                                    }
-                                if (Child1.tagName()=="FrameObjects")
-                                    {
-                                        cout << "printed 1 FrameObjects" << endl;
-                                    }
-
-                    while(!Child1.isNull())
+                   QDomElement Child1=Child.firstChild().toElement(); // Get <_>'s first child
+                    if (Child1.tagName()=="FrameNumber") // Go to next <_>'s child ("FrameObjects")
+                    {
+                        Child1 = Child1.nextSibling().toElement();
+                    }
+                    while(!Child1.isNull()) // In the "FrameObjects" start circle
+                    {
+                        if (Child1.tagName()=="FrameObjects") // Into the <FrameObjects>
                         {
-                                    if (Child1.tagName()=="FrameObjects")
-                                        {
-                                            cout << "printed 2 FrameObjects" << endl;
-                                        }
-                                        //cout << "in the <_>" << endl;
-                                    if (Child1.tagName()=="FrameObjects") // Into the <FrameObjects>
-                                        {
-                                            cout << "in the <FrameObjects>" << endl;
-                                            QDomElement Child2=Child1.firstChild().toElement(); // <_>
+                            QDomElement Child2=Child1.firstChild().toElement(); // Get second <_>
 
-                                            if (Child2.tagName()=="_")
-                                                {
-                                                    cout << "PASS" << endl;
-                                                    QDomElement Child3=Child2.firstChild().toElement();
-                                                    Child3 = Child3.nextSibling().toElement();
-                                                    if (Child3.tagName()=="rect")
-                                                    {
-                                                        cout << "Dekita yo!" << endl;
-
-                                                        Name = Child3.firstChild().toText().data();
-
-
-                                                        cout << " xxx= " << Name.toStdString().c_str() << endl;
-                                                    }
-                                                }
-                                        }
-                                    Child1 = Child1.nextSibling().toElement();
+                            if (Child2.tagName()=="_") // Into the second <_>
+                            {
+                                QDomElement Child3=Child2.firstChild().toElement(); // Get first <_>'s child ("type")
+                                Child3 = Child3.nextSibling().toElement(); // Go to next <_>'s child ("rect")
+                                if (Child3.tagName()=="rect") // Into the <rect>
+                                {
+                                    Name = Child3.firstChild().toText().data(); // Variable defenition
+                                    cout << " xxx= " << Name.toStdString().c_str() << endl; // Testing write
+                                }
+                            }
                         }
+                    Child1 = Child1.nextSibling().toElement();
+                    }
                 }
 
                 // Next child
@@ -141,18 +104,12 @@ int main(int argc, char* argv[])
             // Display component data
            // std::cout << "Component " << ID.toStdString().c_str() << std::endl;
             std::cout << "   Name  = " << Name.toStdString().c_str() << std::endl;
-            std::cout << "   Value Q1 = " << Q1 << std::endl;
             std::cout << std::endl;
         }
 
         // Next component
         Component = Component.nextSibling().toElement();
     }
-
-
-
-
-
 
 
 
