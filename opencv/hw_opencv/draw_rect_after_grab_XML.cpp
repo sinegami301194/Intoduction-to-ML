@@ -24,7 +24,21 @@ using namespace cv;
 //https://www.lucidar.me/en/dev-c-cpp/reading-xml-files-with-qt/
 //http://doc.crossplatform.ru/qt/4.7.x/qstring.html
 
-bool parsing_rect_params(string f, int x, int y, int w, int h)
+bool load_from_XML(QDomDocument& xmlBOM, const char* XML_P)
+{
+    QFile f(XML_P); // Load XML from path
+    if (!f.open(QIODevice::ReadOnly))
+    {
+        // Error while loading file
+        cerr << "Error while loading file" << endl;
+        return false;
+    }
+    xmlBOM.setContent(&f);
+    f.close();
+    return true;
+}
+
+bool parsing_rect_params(string f, int& x, int& y, int& w, int& h)
 {
     string s;
     vector<string> result;
@@ -38,19 +52,17 @@ bool parsing_rect_params(string f, int x, int y, int w, int h)
             rect_param_count++;
         }
     }
-    x = stoi(result[0]);
-    y = stoi(result[1]);
-    w = stoi(result[2]);
-    h = stoi(result[3]);
+    x = stoi(result[0]); y = stoi(result[1]);
+    w = stoi(result[2]); h = stoi(result[3]);
     return 0;
 }
 
-bool draw_text_rect(Mat frame, const char * str, int x, int y, int w, int h)
+bool draw_text_rect(Mat& frame, const char * str, int x, int y, int w, int h)
 {
     putText(frame, str, cvPoint(30,30),
            FONT_HERSHEY_COMPLEX_SMALL, 1.0, cvScalar(128,255,255), 1, CV_AA);
     rectangle(frame,Rect(x, y, w, h), Scalar(128,255,255),2);
-    return 0;
+    return true;
 }
 
 int main(int argc, char* argv[])
@@ -61,50 +73,34 @@ int main(int argc, char* argv[])
     string Image_PATH = "/home/alpatikov_i/Pictures/p2.jpg";
     const String &Video_PATH = "/testdata/tor/inp/tor.028/tor.028.021.left.avi";
     const char* XML_PATH = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/tor.028.021.left.avi.frameData.xml";
-    QString XML_P = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/test.xml";
+    const char* XML_P = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/test.xml";
 
     // ===OTHER_VARIABLES_DECLARATION===
+    int x, y, w, h;
     string Text_info;
     QDomDocument xmlBOM;
-    int x, y, w, h;
-
+    QString Name;
     VideoCapture cap(Video_PATH);
 
     int frame_number = 0;
     int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
     int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
     VideoWriter video("/home/alpatikov_i/Pictures/test.avi",CV_FOURCC('M','J','P','G'),
-                                                10, Size(frame_width,frame_height),true);
+                      10, Size(frame_width,frame_height),true);
 
     // ===LOAD_AND_READ_FROM_XML===
-    QFile f("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/test.xml"); // Load XML from path
-    if (!f.open(QIODevice::ReadOnly ))
-    {
-        // Error while loading file
-        cerr << "Error while loading file" << endl;
-        return 1;
-    }
+    load_from_XML(xmlBOM, XML_P);
 
-    if (xmlBOM.setContent(&f)) // Fill the data from XML
-    {
-        cout << "Set is contained" << endl;
-    }
-    f.close();
 
     // ===DATA_ACCESS===
     QDomElement root = xmlBOM.documentElement();
     QDomElement Component=root.firstChild().toElement(); // Set Component as "FrameDataArray"
-
     while(!Component.isNull()) // Start reading in the "FrameDataArray"
     {
-        // Check if the child tag name is COMPONENT
-        if (Component.tagName()=="FrameDataArray")
+        if (Component.tagName()=="FrameDataArray") // Check if the child tag name is COMPONENT
         {
             // Get the first child of the component
             QDomElement Child=Component.firstChild().toElement(); // Get first <_>
-
-            // ===VARIABLE_DECLARATION===
-            QString Name;
 
             // Read each child of the component node
             while (!Child.isNull())
@@ -132,7 +128,7 @@ int main(int argc, char* argv[])
                                     cout << " xxx= " << Name.toStdString().c_str() << endl; // Testing write
                                     {
                                         string f(Name.toStdString());
-                                        
+
                                         //===PARSING_RECTANGLE_PARAMETRS_STRING===
                                         parsing_rect_params(f, x, y, w, h);
 
