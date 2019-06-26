@@ -12,6 +12,10 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
+#include <sstream>
+#include <bits/stdc++.h>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace cv;
@@ -105,6 +109,19 @@ int main(int argc, char* argv[])
            // std::cout << "Component " << ID.toStdString().c_str() << std::endl;
             std::cout << "   Name  = " << Name.toStdString().c_str() << std::endl;
             std::cout << std::endl;
+            string f(Name.toStdString());
+            cout << " pass " << f << " pass " << endl;
+            string s;
+            vector<string> result;
+            boost::split(result, f, boost::is_any_of(" "));
+
+            for (int i = 0; i < result.size(); i++)
+            {
+                if ((result[i] != "\n") && (result[i] != " ") && (result[i] != ""))
+                {
+                    cout << result[i] << endl;
+                }
+            }
         }
 
         // Next component
@@ -118,9 +135,9 @@ int main(int argc, char* argv[])
     Mat frame;
     VideoCapture cap(Video_PATH);
     cap >> frame;
+
     putText(frame, "Frame number: 0", cvPoint(30,30),
            FONT_HERSHEY_COMPLEX_SMALL, 1.0, cvScalar(128,255,255), 1, CV_AA);
-    //rectangle(img,Rect(394, 114, 92, 76), Scalar(255,128,128),2);
 
     rectangle(frame,Rect(394, 114, 92, 76), Scalar(128,255,255),2);
 
