@@ -3,10 +3,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-//#include <ocvgui.h>
-//#include <ar10/ocvgui.h>
-//#include <arcore/markup_reader.h>
-//#include <framedata/framedata.h>
 
 #include <string>
 #include <iostream>
@@ -34,11 +30,10 @@ public:
         occlusionRate = (double)node["occlusionRate"];
         track = (int)node["track"];
         tag = (string)node["tag"];
-        auto nn = node["rect"];
-        if (nn.isSeq() && nn.size() == 4)
+        if (node["rect"].isSeq() && node["rect"].size() == 4)
         {
             std::vector<int> zz;
-            nn >> zz;
+            node["rect"] >> zz;
             x = zz[0];
             y = zz[1];
             w = zz[2];
@@ -99,7 +94,7 @@ int main(int argc, char* argv[])
     int frame_number = 0;
     int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
     int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
-    VideoWriter video("/home/alpatikov_i/Pictures/test2.avi",CV_FOURCC('M','J','P','G'),
+    VideoWriter video("/home/alpatikov_i/Pictures/DrawFrameData.avi",CV_FOURCC('M','J','P','G'),
                       10, Size(frame_width,frame_height),true);
 
     string filename = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/tor.028.021.left.avi.frameData.xml";
@@ -118,8 +113,7 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        FileNode FDA = fs["FrameDataArray"];                         // Read string sequence - Get node
-        cout << FDA.type() << FDA.name() << "PASS" << endl;
+        FileNode FDA = fs["FrameDataArray"];                                               // Read string sequence - Get node
         if (FDA.type() != FileNode::SEQ)
         {
             cerr << "strings is not a sequence! FAIL" << endl;
@@ -131,20 +125,19 @@ int main(int argc, char* argv[])
         {
             FileNode underscore_1 = *itFDA;
             FileNodeIterator itUS1 = underscore_1.begin(), itUS1_end = underscore_1.end();  // Go through the node underscore_1
-            for (; itUS1 != itUS1_end; ++itUS1)
-            {
-                int FrameNumber = (int)(underscore_1["FrameNumber"]);
-                FileNode FrameObjects = underscore_1["FrameObjects"];                        // Go through the node FrameObjects
-                FileNodeIterator itFO = FrameObjects.begin(), in_end = FrameObjects.end();  // Go through the node underscore_2
 
-                FileNode US2 = *itFO;
+                int FrameNumber = (int)(underscore_1["FrameNumber"]);
+                FileNode FrameObjects = underscore_1["FrameObjects"];
+                FileNodeIterator itFO = FrameObjects.begin();                                // Go through the node FrameObjects
+
+                FileNode US2 = *itFO;// Go through the node underscore_2
                 FrameObjectsContain node;
                 node.read(US2);
 
                 // ===DRAW_RECTANGLES===SHOW_PICTURES==WRITE_VIDEO_OUTPUT===
                 Mat frame;
                 cap >> frame;
-                string frame_str = string("Frame number: ").append(to_string(frame_number));
+                string frame_str = string("Frame number: ").append(to_string(FrameNumber));
                 const char * str = frame_str.c_str();
                 draw_text_rect(frame, str, node.x, node.y, node.w, node.h);
                 namedWindow("win",WINDOW_AUTOSIZE);
@@ -152,9 +145,9 @@ int main(int argc, char* argv[])
                 video.write(frame);
                 char c = (char)waitKey(33);
                 if( c == 27 ) break;
+                cout << node.x << " " << node.y << " " << node.w << " " << node.h << endl;
+                cout << node.flags << endl;
 
-
-            }
         }
         }
     destroyAllWindows();
