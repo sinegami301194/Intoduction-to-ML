@@ -3,10 +3,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-//#include <ocvgui.h>
-//#include <ar10/ocvgui.h>
-//#include <arcore/markup_reader.h>
-//#include <framedata/framedata.h>
 
 #include <string>
 #include <iostream>
