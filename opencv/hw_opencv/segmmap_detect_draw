@@ -83,6 +83,8 @@ int main(int argc, char* argv[])
 
   string filename = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/tor.028.021.left.avi.frameData.xml";
   string filename_segm_out = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.000000.png";
+  string filename_segm_out1 = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.%06d.png";
+
   {
     //read
     FileStorage fs;
@@ -102,6 +104,11 @@ int main(int argc, char* argv[])
     }
     FileNodeIterator itFDA = FDA.begin(), it_end = FDA.end();                            // Go through the node FrameDataArray
     int i = 0;
+
+    VideoCapture out_seg;
+        out_seg.open("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.%06d.png");
+// /testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.(%06d).jpg
+
     for (; itFDA != it_end; ++itFDA)
     {
       FileNode underscore_1 = *itFDA;
@@ -119,13 +126,19 @@ int main(int argc, char* argv[])
       Mat frame;
       cap >> frame;
 
-      Mat out_segmmap(frame.rows,frame.cols,CV_8UC3,Scalar(255,255,255));
+      Mat out_segmmap(frame.rows,frame.cols,CV_8UC3,Scalar(0,0,0));
       // ===READ_SEGMMAP_AND_DRAW_AT_PICTURES===
-      Mat img = imread(filename_segm_out);
-cout << "zzz31" << endl;
-         for(int j=0;j<img.rows;j++)
-         {cout << img.rows << endl;
-          for (int i=0;i<img.cols;i++)
+      Mat img;
+      out_seg >> img;
+cout << "pass" << endl;
+cout << img.rows << endl;
+cout << img.cols << endl;
+
+          //= imread(filename_segm_out1);
+         for(int j=0; j<img.rows; j++)
+         {
+           cout << img.rows << endl;
+          for (int i=0; i<img.cols; i++)
             {
               if (img.at<cv::Vec3b>(j,i)[0] == 0)
               {
@@ -159,10 +172,10 @@ cout << "zzz31" << endl;
               {
                 rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,0,255));
               }
-            
+
             }
           }
- 
+
 imwrite("/home/alpatikov_i/Pictures/out_segmmap.jpg", out_segmmap);
 
             cout << "zzz2" << endl;
