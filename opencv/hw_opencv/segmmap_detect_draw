@@ -3,11 +3,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-//#include <ocvgui.h>
-//#include <ar10/ocvgui.h>
-//#include <arcore/markup_reader.h>
-//#include <framedata/framedata.h>
-
 #include <string>
 #include <iostream>
 #include <vector>
@@ -24,22 +19,21 @@ public:
 
   void read(const FileNode& node)                          //Read serialization for this class
   {
-    type = (string)node["type"];
-    flags = (int)node["flags"];
+    string type = static_cast<string>(node["type"]);
+    int flags = static_cast<int>(node["flags"]);
     int index = static_cast<int>(node["index"]);
-    //index = (int)node["index"];
-    zOrder = (int)node["zOrder"];
-    occlusionRate = (double)node["occlusionRate"];
-    track = (int)node["track"];
-    tag = (string)node["tag"];
+    int zOrder = static_cast<int>(node["zOrder"]);
+    double occlusionRate = static_cast<double>(node["occlusionRate"]);
+    int track = static_cast<int>(node["track"]);
+    string tag = static_cast<string>(node["tag"]);
     if (node["rect"].isSeq() && node["rect"].size() == 4)
     {
-      std::vector<int> zz;
-      node["rect"] >> zz;
-      x = zz[0];
-      y = zz[1];
-      w = zz[2];
-      h = zz[3];
+      vector<int> rect;
+      node["rect"] >> rect;
+      x = rect[0];
+      y = rect[1];
+      w = rect[2];
+      h = rect[3];
     }
   }
 public:   // Data Members
@@ -82,8 +76,7 @@ int main(int argc, char* argv[])
                     10, Size(frame_width,frame_height),true);
 
   string filename = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/tor.028.021.left.avi.frameData.xml";
-  string filename_segm_out = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.000000.png";
-  string filename_segm_out1 = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.%06d.png";
+  string filename_segm_out = "/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.%06d.png";
 
   {
     //read
@@ -106,8 +99,7 @@ int main(int argc, char* argv[])
     int i = 0;
 
     VideoCapture out_seg;
-        out_seg.open("/testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.%06d.png");
-// /testdata/tor/out/tor.028/tor.028.021.left.avi.dat/segmentation/tor.028.021.left.(%06d).jpg
+        out_seg.open(filename_segm_out);
 
     for (; itFDA != it_end; ++itFDA)
     {
@@ -130,14 +122,10 @@ int main(int argc, char* argv[])
       // ===READ_SEGMMAP_AND_DRAW_AT_PICTURES===
       Mat img;
       out_seg >> img;
-cout << "pass" << endl;
-cout << img.rows << endl;
-cout << img.cols << endl;
 
-          //= imread(filename_segm_out1);
          for(int j=0; j<img.rows; j++)
          {
-           cout << img.rows << endl;
+           //cout << img.rows << endl;
           for (int i=0; i<img.cols; i++)
             {
               if (img.at<cv::Vec3b>(j,i)[0] == 0)
@@ -178,7 +166,6 @@ cout << img.cols << endl;
 
 imwrite("/home/alpatikov_i/Pictures/out_segmmap.jpg", out_segmmap);
 
-            cout << "zzz2" << endl;
       // ===DRAW_RECTANGLES===SHOW_PICTURES==WRITE_VIDEO_OUTPUT===
 
       string frame_str = string("Frame number: ").append(to_string(FrameNumber));
@@ -191,11 +178,10 @@ imwrite("/home/alpatikov_i/Pictures/out_segmmap.jpg", out_segmmap);
 
       draw_text_rect(frame, str, node.x, node.y, node.w, node.h);
       namedWindow("win",WINDOW_AUTOSIZE);
-      cout << frame.size() << endl;
       imshow("win",frame);
       video.write(frame);
       imwrite("/home/alpatikov_i/Pictures/out_segmmap1.jpg", frame);
-      char c = (char)waitKey(0);
+      char c = (char)waitKey(33);
       if( c == 27 ) break;
 
     }
