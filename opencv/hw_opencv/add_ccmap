@@ -184,15 +184,20 @@ int main()
     CCMap ccmap;
     Mat emptyWeights;
     ccmap.compute(binMat, emptyWeights);
-   // cout << binMat << endl;
-    cout << ccmap.cc[1].maxx << endl;
+
+    // ===COMPUTE_CENTER_OF_MASS_AND_BOUNDARIES===
     int x = (int) ccmap.cc[1].xc;
     int y = (int) ccmap.cc[1].yc;
-
     int maxx = (int) ccmap.cc[1].maxx;
     int maxy = (int) ccmap.cc[1].maxy;
     int minx = (int) ccmap.cc[1].minx;
     int miny = (int) ccmap.cc[1].miny;
+
+    // ===DISPLAYING_THE_COMPARISON===
+    cout << " " << endl;
+    cout << maxx << " " << maxy << " " << minx << " " << miny << " " << "Using ccmap" << endl;
+    cout << FrObConData.x + FrObConData.w << " " << FrObConData.y + FrObConData.h
+         << " " << FrObConData.x << " " << FrObConData.y << " " << "Using segmmap" << endl;
 
     // ===DRAW_RECTANGLES===SHOW_PICTURES==WRITE_VIDEO_OUTPUT===
     string frame_str = string("Frame number: ").append(to_string(FrameNumber));
@@ -202,34 +207,28 @@ int main()
     draw_text_rect(frame, str, FrObConData.x, FrObConData.y, FrObConData.w, FrObConData.h);
     namedWindow("win",WINDOW_AUTOSIZE);
 
+    // ===CONVERT_CCMAP_TO_CV_8UC3===
+    cv::Mat ccmap_disp(cv::Size(960, 600), CV_8UC3);
+    cvtColor(binMat,ccmap_disp,CV_GRAY2RGB);
+
+    // ===DISPLAY_CENTER_OF_MASS_AND_BOUNDARIES===
+    circle(ccmap_disp, Point(x,y),5, Scalar(255,0,255),CV_FILLED, 1,0);
+    circle(ccmap_disp, Point(maxx,maxy),3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, Point(maxx,miny),3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, Point(minx,maxy),3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, Point(minx,miny),3, Scalar(38,226,239),CV_FILLED, 1,0);
+    putText(ccmap_disp, "Boundaries", cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+            cvScalar(38,226,239), 1, CV_AA);
+    putText(ccmap_disp, "Center of mass", cvPoint(30, 60), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+            cvScalar(255,0,255), 1, CV_AA);
+
     // ===DISPLAY_TWO_SCREENS===
-    cv::Mat finish(cv::Size(960, 600), CV_8UC3);
-    cvtColor(binMat,finish,CV_GRAY2RGB);
-
-circle(finish, Point(x,y),5, Scalar(255,0,255),CV_FILLED, 1,0);
-
-circle(finish, Point(maxx,maxy),3, Scalar(38,226,239),CV_FILLED, 1,0);
-circle(finish, Point(maxx,miny),3, Scalar(38,226,239),CV_FILLED, 1,0);
-circle(finish, Point(minx,maxy),3, Scalar(38,226,239),CV_FILLED, 1,0);
-circle(finish, Point(minx,miny),3, Scalar(38,226,239),CV_FILLED, 1,0);
-
-
-putText(finish, "Boundaries", cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
-        cvScalar(38,226,239), 1, CV_AA);
-putText(finish, "Center of mass", cvPoint(30, 60), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
-        cvScalar(255,0,255), 1, CV_AA);
-
-
     cv::Mat win_mat(cv::Size(1920, 600), CV_8UC3);
-    // Copy small images into big mat 
-    frame.copyTo(win_mat(cv::Rect(  0, 0, 960, 600)));
-    finish.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
-    // Display big mat
-    cv::imshow("Images", win_mat);
+    frame.copyTo(win_mat(cv::Rect(  0, 0, 960, 600)));      // Copy small images into big mat
+    ccmap_disp.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
+    cv::imshow("Images", win_mat);                          // Display big mat
 
-
-
-
+    // ===WRITE_VIDEO_AND_PICTURE===
     video.write(win_mat);
     imwrite("/home/alpatikov_i/Pictures/out_segmmap2.jpg", win_mat);
     char c = (char)waitKey(33);
