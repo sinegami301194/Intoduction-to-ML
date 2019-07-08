@@ -1,0 +1,384 @@
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/video/tracking.hpp>
+#include <string>
+#include <iostream>
+#include <vector>
+#include <ar10/ccmap.h>
+#include <ar10/ccdata.h>
+#include <warping/warping.h>
+#include <ar10/ticker.h>
+#include <ocvutils/ocvutils.h>
+#include <opencv2/optflow.hpp>
+
+using namespace cv;
+using namespace std;
+
+class FrameObjectsContents
+{
+public:
+  FrameObjectsContents() : x(0), y(0), w(0), h(0), flags(0), index(0), zOrder(0),
+    occlusionRate(0.0), track(0)
+  {}
+
+  void read(const FileNode& node) //Read serialization for this class
+  {
+    string type = static_cast<string>(node["type"]);
+    int flags = static_cast<int>(node["flags"]);
+    int index = static_cast<int>(node["index"]);
+    int zOrder = static_cast<int>(node["zOrder"]);
+    double occlusionRate = static_cast<double>(node["occlusionRate"]);
+    int track = static_cast<int>(node["track"]);
+    string tag = static_cast<string>(node["tag"]);
+    if (node["rect"].isSeq() && node["rect"].size() == 4)
+    {
+      vector<int> rect;
+      node["rect"] >> rect;
+      x = rect[0];
+      y = rect[1];
+      w = rect[2];
+      h = rect[3];
+    }
+  }
+public:   // Data members
+  string type;
+  int x;
+  int y;
+  int w;
+  int h;
+  int flags;
+  int index;
+  int zOrder;
+  double occlusionRate;
+  int track;
+  string tag;
+};
+
+struct Points
+{
+  Point p1, p2, p3, p4, pc;
+};
+
+bool draw_text_rect(Mat& frame, const char * str, const int x, const int y, const int w, const int h)
+{
+  putText(frame, str, cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+          cvScalar(128, 255, 255), 1, CV_AA);
+  rectangle(frame, Rect(x, y, w, h), Scalar(128, 255, 255), 2);
+  return true;
+}
+
+bool fill_out_segmmap(const Mat & segm_image, Mat & out_segmmap)
+{
+  Ticker t("Function time without forEach: ", NULL, 0);
+  for(int j=0; j<segm_image.rows; j++)
+  {
+    for (int i=0; i<segm_image.cols; i++)
+    {
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 0)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(128,200,100));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 1)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(128,150,255));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 2)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(6,6,255));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 3)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(222,53,35)); // жатка
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 4)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(38,226,239)); // земля
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 5)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,128,0));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 6)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,0,128));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 7)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,0,255));
+      }
+    }
+  }
+  return true;
+}
+
+
+bool binar_segm_image(Mat & binMat, const Mat & segm_image)
+{
+  // 5 - mach
+  // 4 - скошенная трава
+  // 3 - жатка
+  // 2 - валок
+  // 0 - обочина
+  for(int i = 0 ; i < segm_image.rows ; i++)
+  {//cout << "check" << endl;
+    for(int j = 0 ; j < segm_image.cols ; j++)
+    {
+      if(((segm_image.at<Vec3b>(i,j)[0]+segm_image.at<Vec3b>(i,j)[1]+segm_image.at<Vec3b>(i,j)[2])/3) == 0) // >4
+      {
+        //cout << (double) segm_image.at<Vec3b>(i,j)[0] << " zero" << endl;
+        //cout << (double) segm_image.at<Vec3b>(i,j)[1] << " one" << endl;
+        //cout << (double) segm_image.at<Vec3b>(i,j)[2] << " two" << endl;
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+        binMat.at<uchar>(2 * i, 2 * j) = 255;
+        binMat.at<uchar>(2 * i + 1, 2 * j) = 255;
+        binMat.at<uchar>(2 * i, 2 * j + 1) = 255;
+        binMat.at<uchar>(2 * i + 1, 2 * j + 1) = 255;	//Make pixel white
+      }
+      else
+      {
+        binMat.at<uchar>(2 * i, 2 * j) = 0;
+        binMat.at<uchar>(2 * i + 1, 2 * j) = 0;
+        binMat.at<uchar>(2 * i, 2 * j + 1) = 0;
+        binMat.at<uchar>(2 * i + 1, 2 * j + 1) = 0;     //Make pixel black
+      }
+    }
+  }
+  return true;
+}
+
+bool get_points(const CCMap & ccmap, vector<Points> & dec_points)
+{
+  for(int i = 1; i < ccmap.cc.size(); i++)
+  {
+    Points p;
+    p.p1 = Point(ccmap.cc[i].minx, ccmap.cc[i].miny); // 1 boundary point
+    p.p2 = Point(ccmap.cc[i].minx, ccmap.cc[i].maxy); // 2 boundary point
+    p.p3 = Point(ccmap.cc[i].maxx, ccmap.cc[i].maxy); // 3 boundary point
+    p.p4 = Point(ccmap.cc[i].maxx, ccmap.cc[i].miny); // 4 boundary point
+    p.pc = Point(ccmap.cc[i].xc, ccmap.cc[i].yc); // Center of mass
+    dec_points.push_back(p);
+
+  }
+  return true;
+}
+
+bool displayCenterAndBoud(Mat & ccmap_disp, const vector<Points> & dec_points)
+{
+  for(int j = 0; j < dec_points.size(); j++)
+  {
+    circle(ccmap_disp, dec_points[j].pc, 5, Scalar(255,0,255),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p1, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p2, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p3, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p4, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+  }
+  putText(ccmap_disp, "Boundaries", cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+          cvScalar(38,226,239), 1, CV_AA);
+  putText(ccmap_disp, "Center of mass", cvPoint(30, 60), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+          cvScalar(255,0,255), 1, CV_AA);
+  return true;
+}
+
+int main()
+{
+  // ===PATH_TO_CONFIG_FILE_AND_SEGMENTATION_OUTPUT_IMAGES===
+  string filename = "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/tor.089.015.left.avi.frameData.xml";
+  string filename_segm_out = "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/segmentation/tor.089.015.left.%06d.png";
+
+  // ===PREPEARING_FOR_WRITING_VIDEO===
+  const string Video_input_PATH = "/testdata/tor/inp/tor.089/tor.089.015.left.avi";
+  const string Video_output_PATH = "/home/alpatikov_i/Pictures/OptflowSegmmap.avi";
+  VideoCapture cap(Video_input_PATH);
+  VideoCapture out_seg;  // Creating VideoCapture for segmentation output images
+  out_seg.open(filename_segm_out);
+  int frame_number = 0;
+  int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+  int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+  int DUPLEX_width = 1920;
+  int DUPLEX_height = 600;
+  VideoWriter video(Video_output_PATH, CV_FOURCC('M','J','P','G'),
+                    10, Size(DUPLEX_width,DUPLEX_height), true);
+
+  // ===READING_FROM_CONFIG_FILE===
+  /*FileStorage fs;
+  fs.open(filename, FileStorage::READ);
+  if (!fs.isOpened())
+  {
+    cerr << "Failed to open " << filename << endl;
+    return 1;
+  }
+  FileNode FDA = fs["FrameDataArray"];                            // Read string sequence - Get node
+  if (FDA.type() != FileNode::SEQ)
+  {
+    cerr << "strings is not a sequence! FAIL" << endl;
+    return 1;
+  }
+  FileNodeIterator itFDA = FDA.begin(), it_end = FDA.end();       // Go through the node FrameDataArray
+  for (; itFDA != it_end; ++itFDA)
+  {
+    FileNode underscore_1 = *itFDA;
+    FileNodeIterator itUS1 = underscore_1.begin(),
+                             itUS1_end = underscore_1.end();      // Go through the node underscore_1
+    int FrameNumber = (int)(underscore_1["FrameNumber"]);
+    FileNode FrameObjects = underscore_1["FrameObjects"];
+    FileNodeIterator itFO = FrameObjects.begin();                 // Go through the node FrameObjects
+    FileNode US2 = *itFO;                                         // Go through the node underscore_2
+
+    // ===READING_DATA_FROM_NODE===
+    FrameObjectsContents FrObConData;
+    FrObConData.read(US2);*/
+//  Mat frame1, prvs;
+//  cap >> frame1;
+//  cvtColor(frame1, prvs, COLOR_BGR2GRAY);
+//  Mat out_segmmap(frame1.rows,frame1.cols,CV_8UC3,Scalar(0,0,0));
+
+
+  // первый кадр сегментационной карты
+
+  Mat segm_image, seg;
+  out_seg >> segm_image;
+
+  cvtColor(segm_image, seg, COLOR_BGR2GRAY); // конвертируем в серый цвет
+  cout << seg.size() << endl;
+
+  while (true)
+  {
+    // ===FRAME_DEFINITION===
+    // работа с исходным изображением
+
+    Mat frame, next;
+    cap >> frame;
+
+    cvtColor(frame, next, COLOR_BGR2GRAY);
+    Mat flow(segm_image.size(), CV_32FC2);
+
+
+    Mat segm_image1, seg1;
+    out_seg >> segm_image1;
+
+cout << flow.size() << " FLOW" << endl;
+    cvtColor(segm_image1, seg1, COLOR_BGR2GRAY);
+    cout << seg1.size() << endl;
+    Mat flow_seg;
+
+      Ptr< cv::optflow::DISOpticalFlow > Disof = cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_ULTRAFAST);
+   try{   Disof->calc(seg, seg1, flow);
+    }
+    catch (std::exception e)
+    {
+      cout << "Eeee" << e.what() << endl;
+    }
+
+    //cv::optflow::DISOpticalFlow(prvs, next, flow, 0.5, 3, 15, 3, 5, 1.2, 0);
+    //cv::optflow::DISOpticalFlow *Disof;
+
+   // //////////////////////////
+ //   Ptr< cv::optflow::DISOpticalFlow > Disof = cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_ULTRAFAST);
+//    Disof->calc(prvs, next, flow);
+    // visualization
+    Mat flow_parts[2];
+    split(flow, flow_parts);
+    Mat magnitude, angle, magn_norm;
+    cartToPolar(flow_parts[0], flow_parts[1], magnitude, angle, true);
+    normalize(magnitude, magn_norm, 0.0f, 1.0f, NORM_MINMAX);
+    angle *= ((1.f / 360.f) * (180.f / 255.f));
+    //build hsv image
+    Mat _hsv[3], hsv, hsv8, bgr;
+    _hsv[0] = angle;
+    _hsv[1] = Mat::ones(angle.size(), CV_32F);
+    _hsv[2] = magn_norm;
+    merge(_hsv, 3, hsv);
+    hsv.convertTo(hsv8, CV_8U, 255.0);
+    cvtColor(hsv8, bgr, COLOR_HSV2BGR);
+    //imshow("frame2", bgr);
+
+    Mat draw = viz_flow(flow, segm_image1, {}, 16);
+    // Mat draw = viz_flow(flow, frame, {}, 16);
+
+    imshow("pobeda",draw);
+
+
+
+    // ===READ_SEGMMAP_AND_DRAW_AT_FRAME===
+  //  Mat out_segmmap(frame.rows,frame.cols,CV_8UC3,Scalar(0,0,0));
+  //  Mat segm_image;
+  //  out_seg >> segm_image;
+ //   fill_out_segmmap(segm_image,out_segmmap);
+
+    // ===CONVERT_IMAGE_TO_BINARY===
+    Mat binMat (frame.size(), CV_8U); //Grayscale matrix
+    binar_segm_image(binMat, segm_image); // Convert grayscale matrix to binary
+
+    // ===ADD_CALIB_READ_AND_BIRDEYE_TRANSFORMER===
+    const string calib_PATH = "/home/alpatikov_i/ar13/testdata/tor/inp/tor.089/calib/cam_mono.yml";
+    Camera camera_cam;
+    camera_cam.read(calib_PATH);
+    BirdeyeTransformer birdEyeT(camera_cam);
+    Mat binBirdEyeTImage = birdEyeT.process(binMat);
+
+    // ===COMPUTE_CONNECTED-COMPONENT_LABELING===
+    CCMap ccmap;
+    Mat emptyWeights;
+    ccmap.compute(binBirdEyeTImage, emptyWeights);
+
+    // ===COMPUTE_CENTER_OF_MASS_AND_BOUNDARIES===
+    vector<Points> dec_points;
+    get_points(ccmap, dec_points);
+
+    // ===COMPUTE_BIRDEYE_TRANSFORMATION===
+    vector<Points> bin_points;
+    for (int i = 0; i < dec_points.size(); i++)
+    {
+      Points pbin;
+      pbin.p1 = birdEyeT.back(dec_points[i].p1);
+      pbin.p2 = birdEyeT.back(dec_points[i].p2);
+      pbin.p3 = birdEyeT.back(dec_points[i].p3);
+      pbin.p4 = birdEyeT.back(dec_points[i].p4);
+      bin_points.push_back(pbin);
+    }
+
+    // ===DRAW_RECTANGLES===SHOW_PICTURES==WRITE_VIDEO_OUTPUT===
+    // string frame_str = string("Frame number: ").append(to_string(FrameNumber));
+    //const char * str = frame_str.c_str();
+    double alpha = 0.5;
+//    cv::addWeighted(frame, alpha, out_segmmap, 1.0 - alpha , 0.0, frame);
+    // draw_text_rect(frame, str, FrObConData.x, FrObConData.y, FrObConData.w, FrObConData.h);
+    //namedWindow("win",WINDOW_AUTOSIZE);
+
+    // ===CONVERT_CCMAP_TO_CV_8UC3===
+    cv::Mat ccmap_disp(cv::Size(960, 600), CV_8UC3);
+    cvtColor(binBirdEyeTImage,ccmap_disp,CV_GRAY2RGB);
+
+    // ===DISPLAY_CENTER_OF_MASS_AND_BOUNDARIES===
+    displayCenterAndBoud(ccmap_disp, dec_points);
+
+    // ===DRAW_POLYGON===
+    for (int i = 0; i < bin_points.size(); i++)
+    {
+      line( frame, bin_points[i].p1, bin_points[i].p2, Scalar(38,226,239) );
+      line( frame, bin_points[i].p2, bin_points[i].p3, Scalar(38,226,239) );
+      line( frame, bin_points[i].p3, bin_points[i].p4, Scalar(38,226,239) );
+      line( frame, bin_points[i].p1, bin_points[i].p4, Scalar(38,226,239) );
+    }
+cout << "fffffff" << endl;
+    // ===DISPLAY_TWO_SCREENS===
+ //   cv::Mat win_mat(cv::Size(1920, 600), CV_8UC3);
+ //   draw.copyTo(win_mat(cv::Rect(  0, 0, 960, 600)));      // Copy small images into big mat
+ //   bgr.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
+//    cv::imshow("Images", win_mat);                          // Display big mat
+
+    // ===WRITE_VIDEO_AND_PICTURE===
+//    video.write(win_mat);
+    //video.write(draw);
+//    imwrite("/home/alpatikov_i/Pictures/out_segmmap5.jpg", win_mat);
+    //imwrite("/home/alpatikov_i/Pictures/out_segmmap6.jpg", draw);
+    char c = (char)waitKey(33);
+    if( c == 27 ) break;
+  }
+  destroyAllWindows();
+  return 0;
+}
