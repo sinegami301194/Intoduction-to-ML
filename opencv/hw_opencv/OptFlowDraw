@@ -60,7 +60,6 @@ bool fill_out_segmmap(const Mat & segm_image, Mat & out_segmmap)
   return true;
 }
 
-
 bool binar_segm_image(Mat & binMat, const Mat & segm_image)
 {
   // 5 - mach
@@ -94,7 +93,6 @@ bool binar_segm_image(Mat & binMat, const Mat & segm_image)
 int main()
 {
   // ===PATH_TO_CONFIG_FILE_AND_SEGMENTATION_OUTPUT_IMAGES===
-  //string filename = "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/tor.089.015.left.avi.frameData.xml";
   string filename_segm_out = "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/segmentation/tor.089.015.left.%06d.png";
 
   // ===PREPEARING_FOR_WRITING_VIDEO===
@@ -111,85 +109,41 @@ int main()
   VideoWriter video(Video_output_PATH, CV_FOURCC('M','J','P','G'),
                     10, Size(DUPLEX_width,DUPLEX_height), true);
 
-
-  Mat frame1, prvs;
+  // ===FRAME_DEFINITION===
+  Mat frame1, prvs; // "frame1" is the first frame
   cap >> frame1;
-  cvtColor(frame1, prvs, COLOR_BGR2GRAY);
-
-  Mat out_segmmap(frame1.rows,frame1.cols,CV_8UC3,Scalar(0,0,0));
- Mat segm_image;
+  Mat segm_image; // "segm_image" is the first segmmap frame
   out_seg >> segm_image;
-  fill_out_segmmap(segm_image,out_segmmap);
-
+  Mat out_segmmap(frame1.rows,frame1.cols,CV_8UC3,Scalar(0,0,0));
+  fill_out_segmmap(segm_image,out_segmmap); // Color the segmmap image
+  cvtColor(frame1, prvs, COLOR_BGR2GRAY); // Convert to grayscale
   while (true)
   {
-    // ===FRAME_DEFINITION===
-    // работа с исходным изображением
-
-    Mat frame, next;
+    Mat frame, next; // "frame" are the second frame ect.
     cap >> frame;
-    cvtColor(frame, next, COLOR_BGR2GRAY);
-    Mat flow(frame.size(), CV_32FC2);
-
-
-
-
-
-
-
-  Ptr< cv::optflow::DISOpticalFlow > Disof = cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_ULTRAFAST);
-  Disof->calc(prvs, next, flow);
-
-
-    // visualization from docs.opencv
+    cvtColor(frame, next, COLOR_BGR2GRAY); // Convert to grayscale
+    Mat flow(frame.size(), CV_32FC2); // Create 2-channels Mat
+    Ptr<cv::optflow::DISOpticalFlow> Disof = cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_ULTRAFAST);
+    Disof->calc(prvs, next, flow); // Optflow value calculation
     Mat flow_parts[2];
-    split(flow, flow_parts);
-
-
-
-     Mat draw = viz_flow(flow, frame, {}, 8);
-
-
-
-
-    // ===CONVERT_IMAGE_TO_BINARY===
-    Mat binMat (frame.size(), CV_8U); //Grayscale matrix
-    binar_segm_image(binMat, segm_image); // Convert grayscale matrix to binary
-
-    // ===ADD_CALIB_READ_AND_BIRDEYE_TRANSFORMER===
-    const string calib_PATH = "/home/alpatikov_i/ar13/testdata/tor/inp/tor.089/calib/cam_mono.yml";
-    Camera camera_cam;
-    camera_cam.read(calib_PATH);
-    BirdeyeTransformer birdEyeT(camera_cam);
-    Mat binBirdEyeTImage = birdEyeT.process(binMat);
-
-    // ===COMPUTE_CONNECTED-COMPONENT_LABELING===
-    CCMap ccmap;
-    Mat emptyWeights;
-    ccmap.compute(binBirdEyeTImage, emptyWeights);
-
-
-    Mat image_increment(frame.rows,frame.cols,CV_8UC3,Scalar(0,0,0));
-
+    split(flow, flow_parts); // Split 2-channels Mat flow
+    Mat draw = viz_flow(flow, frame, {}, 8); // Visualization Optflow
+    Mat image_warped(frame.rows,frame.cols,CV_8UC3,Scalar(0,0,0));
     int v, u = 0;
     for(int i = 0 ; i < frame.rows; i++)
     {
-
       for(int j = 0 ; j < frame.cols ; j++)
       {
-
-              u = static_cast<int> (round(flow_parts[1].at<float>(i,j)));
-              v = static_cast<int> (round(flow_parts[0].at<float>(i,j)));
-
-
+        u = static_cast<int> (round(flow_parts[1].at<float>(i,j))); // Solving optical flow
+        v = static_cast<int> (round(flow_parts[0].at<float>(i,j))); // vectors (u, v)
         if (((i + u) < frame.rows) && (i + u >= 0) && (j + v < frame.cols) && (j + v >= 0))
         {
-          image_increment.at<Vec3b>(i + u, j + v) = out_segmmap.at<Vec3b>(i, j);
+          // Warping out_segmmap image by drawing new one with coordinate offset
+          image_warped.at<Vec3b>(i + u, j + v) = out_segmmap.at<Vec3b>(i, j);
         }
       }
     }
-    out_segmmap = image_increment;
-
+    out_segmmap = image_warped;
 
     // ===DISPLAY_TWO_SCREENS===
     cv::Mat win_mat(cv::Size(1920, 600), CV_8UC3);
@@ -197,9 +151,8 @@ int main()
     out_segmmap.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
     cv::imshow("Images", win_mat);                          // Display big mat
 
-    // ===WRITE_VIDEO_AND_PICTURE===
+    // ===WRITE_VIDEO===
     video.write(win_mat);
-    imwrite("/home/alpatikov_i/Pictures/out_segmmap7.jpg", win_mat);
     char c = (char)waitKey(0);
     if( c == 27 ) break;
   }
