@@ -1,0 +1,286 @@
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+#include <string>
+#include <iostream>
+#include <vector>
+#include <ar10/ccmap.h>
+#include <ar10/ccdata.h>
+#include <warping/warping.h>
+#include <ar10/ticker.h>
+#include <framedata/framedata.h>
+
+using namespace cv;
+using namespace std;
+
+struct Points
+{
+  Point p1, p2, p3, p4, pc; // Boundary points and center of mass
+};
+
+bool draw_text(Mat& frame, const char * str)
+{
+  int *baseLine;
+  Size gts = getTextSize(str, FONT_HERSHEY_COMPLEX_SMALL, 1.0, 1, baseLine);
+  cout << gts.height << " = height" << endl;
+  cout << gts.width << " = width" << endl;
+  putText(frame, str, cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+                                    cvScalar(128, 255, 255), 1, CV_AA);
+  return true;
+}
+
+bool draw_rect(Mat& frame, const int x, const int y, const int w, const int h)
+{
+  rectangle(frame, Rect(x, y, w, h), Scalar(128, 255, 255), 2);
+  return true;
+}
+
+vector<Points> compute_beyet(vector<Points> dec_points, const BirdeyeTransformer& birdEyeT)
+{
+  vector<Points> bin_points;
+  for (int i = 0; i < dec_points.size(); i++)
+  {
+    Points pbin;
+    pbin.p1 = birdEyeT.back(dec_points[i].p1);
+    pbin.p2 = birdEyeT.back(dec_points[i].p2);
+    pbin.p3 = birdEyeT.back(dec_points[i].p3);
+    pbin.p4 = birdEyeT.back(dec_points[i].p4);
+    bin_points.push_back(pbin);
+  }
+  return bin_points;
+}
+
+bool draw_warped_rect(Mat& frame, const vector<Points>& bin_points)
+{
+  for (int i = 0; i < bin_points.size(); i++)
+  {
+    line( frame, bin_points[i].p1, bin_points[i].p2, Scalar(38,226,239) );
+    line( frame, bin_points[i].p2, bin_points[i].p3, Scalar(38,226,239) );
+    line( frame, bin_points[i].p3, bin_points[i].p4, Scalar(38,226,239) );
+    line( frame, bin_points[i].p1, bin_points[i].p4, Scalar(38,226,239) );
+  }
+  return true;
+}
+
+bool fill_out_segmmap(const Mat & segm_image, Mat & out_segmmap)
+{
+  Ticker t("Function time without forEach: ", NULL, 0);
+  for(int j=0; j<segm_image.rows; j++)
+  {
+    for (int i=0; i<segm_image.cols; i++)
+    {
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 0)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(128,200,100));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 1)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(128,150,255));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 2)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(6,6,255));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 3)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(222,53,35)); // Жатка
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 4)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(38,226,239)); // Земля
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 5)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,128,0));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 6)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,0,128));
+      }
+      if (segm_image.at<cv::Vec3b>(j,i)[0] == 7)
+      {
+        rectangle(out_segmmap,Rect(2*i, 2*j, 2, 2), Scalar(255,0,255));
+      }
+    }
+  }
+  return true;
+}
+
+Mat create_duplex_img(const Mat& frame, const Mat& ccmap_disp)
+{
+  cv::Mat win_mat(cv::Size(1920, 600), CV_8UC3);
+  frame.copyTo(win_mat(cv::Rect(0, 0, 960, 600)));      // Copy small images into big mat
+  ccmap_disp.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
+  return win_mat;
+}
+
+bool binar_segm_image(Mat & binMat, const Mat & segm_image)
+{
+  // 5 - mach
+  // 4 - скошенная трава
+  // 3 - жатка
+  // 2 - валок
+  // 0 - обочина
+  for(int i = 0 ; i < segm_image.rows ; i++)
+  {
+    for(int j = 0 ; j < segm_image.cols ; j++)
+    {
+      if(((segm_image.at<Vec3b>(i, j)[0] +
+           segm_image.at<Vec3b>(i, j)[1] +
+           segm_image.at<Vec3b>(i, j)[2]) / 3) == 5)
+      {
+        binMat.at<uchar>(2 * i, 2 * j) = 255;
+        binMat.at<uchar>(2 * i + 1, 2 * j) = 255;
+        binMat.at<uchar>(2 * i, 2 * j + 1) = 255;
+        binMat.at<uchar>(2 * i + 1, 2 * j + 1) = 255; //Make pixel white
+      }
+      else
+      {
+        binMat.at<uchar>(2 * i, 2 * j) = 0;
+        binMat.at<uchar>(2 * i + 1, 2 * j) = 0;
+        binMat.at<uchar>(2 * i, 2 * j + 1) = 0;
+        binMat.at<uchar>(2 * i + 1, 2 * j + 1) = 0;   //Make pixel black
+      }
+    }
+  }
+  return true;
+}
+
+bool get_points(const CCMap & ccmap, vector<Points> & dec_points)
+{
+  for(int i = 1; i < ccmap.cc.size(); i++)
+  {   // cout << "Pass 139" << endl;
+
+    Points p;
+    p.p1 = Point(ccmap.cc[i].minx, ccmap.cc[i].miny); // 1 boundary point
+    p.p2 = Point(ccmap.cc[i].minx, ccmap.cc[i].maxy); // 2 boundary point
+    p.p3 = Point(ccmap.cc[i].maxx, ccmap.cc[i].maxy); // 3 boundary point
+    p.p4 = Point(ccmap.cc[i].maxx, ccmap.cc[i].miny); // 4 boundary point
+    p.pc = Point(ccmap.cc[i].xc, ccmap.cc[i].yc); // Center of mass
+    dec_points.push_back(p);
+
+   //cout << "Pass 152" << endl;
+  }
+ // cout << "Pass 154" << endl;
+  return true;
+}
+
+bool displayCenterAndBound(Mat & ccmap_disp, const vector<Points> & dec_points)
+{
+  for(int j = 0; j < dec_points.size(); j++)
+  {
+    circle(ccmap_disp, dec_points[j].pc, 5, Scalar(255,0,255),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p1, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p2, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p3, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+    circle(ccmap_disp, dec_points[j].p4, 3, Scalar(38,226,239),CV_FILLED, 1,0);
+  }
+  putText(ccmap_disp, "Boundaries", cvPoint(30, 30), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+          cvScalar(38,226,239), 1, CV_AA);
+  putText(ccmap_disp, "Center of mass", cvPoint(30, 60), FONT_HERSHEY_COMPLEX_SMALL, 1.0,
+          cvScalar(255,0,255), 1, CV_AA);
+  return true;
+}
+
+int main()
+{
+  // ===PATH_TO_CONFIG_FILE_AND_SEGMENTATION_OUTPUT_IMAGES===
+  string filename =
+      "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/tor.089.015.left.avi.frameData.xml";
+  string filename_segm_out =
+      "/testdata/tor/out/tor.089/tor.089.015.left.avi.dat/segmentation/tor.089.015.left.%06d.png";
+
+  // ===PREPEARING_FOR_WRITING_VIDEO===
+  const string Video_input_PATH = "/testdata/tor/inp/tor.089/tor.089.015.left.avi";
+  const string Video_output_PATH = "/home/alpatikov_i/Pictures/DrawFrameData3.avi";
+  VideoCapture cap(Video_input_PATH);
+  VideoCapture out_seg;  // Creating VideoCapture for segmentation output images
+  out_seg.open(filename_segm_out);
+  int frame_number = 0;
+  int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+  int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+  int DUPLEX_width = 1920;
+  int DUPLEX_height = 600;
+  VideoWriter video(Video_output_PATH, CV_FOURCC('M','J','P','G'),
+                    10, Size(DUPLEX_width,DUPLEX_height), true);
+
+  // ===READING_FROM_CONFIG_FILE===
+  vector<FrameData> frames;
+  readFramedataFile(filename, frames);
+
+  // ===ELEMENTAL_HANDLING===
+  for (int i = 0; i < frames.size(); ++i)
+  {
+    // ===FRAME_DEFINITION===
+    Mat frame;
+    cap >> frame;
+
+    // ===READ_SEGMMAP_AND_DRAW_AT_FRAME===
+    Mat out_segmmap(frame.rows, frame.cols, CV_8UC3, Scalar(0,0,0));
+    Mat segm_image;
+    out_seg >> segm_image;
+    fill_out_segmmap(segm_image, out_segmmap);
+
+    // ===CONVERT_IMAGE_TO_BINARY===
+    Mat binMat (frame.size(), CV_8U);     // Grayscale matrix
+    binar_segm_image(binMat, segm_image); // Convert grayscale matrix to binar
+
+    // ===ADD_CALIB_READ_AND_BIRDEYE_TRANSFORMER===
+    const string calib_PATH =
+        "/home/alpatikov_i/ar13/testdata/tor/inp/tor.089/calib/cam_mono.yml";
+    Camera camera_cam;
+    camera_cam.read(calib_PATH);
+    BirdeyeTransformer birdEyeT(camera_cam);
+    Mat binBirdEyeTImage = birdEyeT.process(binMat);
+
+    // ===COMPUTE_CONNECTED-COMPONENT_LABELING===
+    CCMap ccmap;
+    Mat emptyWeights;
+    ccmap.compute(binBirdEyeTImage, emptyWeights);
+
+    // ===COMPUTE_CENTER_OF_MASS_AND_BOUNDARIES===
+    vector<Points> dec_points;
+    get_points(ccmap, dec_points);
+
+    // ===COMPUTE_BIRDEYE_TRANSFORMATION===
+    vector<Points> bin_points = compute_beyet(dec_points, birdEyeT);
+
+    // ===IMAGE_BLENDING===
+    double alpha = 0.5;
+    cv::addWeighted(frame, alpha, out_segmmap, 1.0 - alpha , 0.0, frame);
+
+    // ===DRAW_TEXT===
+    string frame_str = string("Frame number: ").append(to_string(frames[i].frameNumber));
+    const char * str = frame_str.c_str();
+    draw_text(frame, str);
+
+    // ===DRAW_RECTANGLES===
+    if(!frames[i].objects.empty())
+    {
+      draw_rect(frame, frames[i].objects[0]->rect.x, frames[i].objects[0]->rect.y,
+                       frames[i].objects[0]->rect.width, frames[i].objects[0]->rect.height);
+    }
+
+    // ===CONVERT_CCMAP_TO_CV_8UC3===
+    cv::Mat ccmap_disp(cv::Size(960, 600), CV_8UC3);
+    cvtColor(binBirdEyeTImage,ccmap_disp,CV_GRAY2RGB);
+
+    // ===DISPLAY_CENTER_OF_MASS_AND_BOUNDARIES===
+    displayCenterAndBound(ccmap_disp, dec_points);
+
+    // ===DRAW_WARPED_RECT===
+    draw_warped_rect(frame, bin_points);
+
+    // ===DISPLAY_TWO_SCREENS===
+    Mat win_mat = create_duplex_img(frame, ccmap_disp);
+    imshow("Images", win_mat); // Display big mat
+
+    // ===WRITE_VIDEO===
+    video.write(win_mat);
+    char c = (char)waitKey(33);
+    if( c == 27 ) break;
+  }
+  destroyAllWindows();
+  return 0;
+}
