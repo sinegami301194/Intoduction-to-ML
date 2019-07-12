@@ -126,11 +126,6 @@ Mat create_duplex_img(const Mat& frame, const Mat& ccmap_disp)
 
 bool binar_segm_image(Mat & binMat, const Mat & segm_image)
 {
-  // 5 - mach
-  // 4 - скошенная трава
-  // 3 - жатка
-  // 2 - валок
-  // 0 - обочина
   for(int i = 0 ; i < segm_image.rows ; i++)
   {
     for(int j = 0 ; j < segm_image.cols ; j++)
