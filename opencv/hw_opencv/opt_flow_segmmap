@@ -12,6 +12,7 @@
 #include <ar10/ticker.h>
 #include <ocvutils/ocvutils.h>
 #include <opencv2/optflow.hpp>
+#include <ar10/ocvkeys.h>
 
 using namespace cv;
 using namespace std;
@@ -126,37 +127,51 @@ int main()
   VideoWriter video(Video_output_PATH, CV_FOURCC('M', 'J', 'P', 'G'),
                     10, Size(DUPLEX_width, DUPLEX_height), true);
 
-  // ===FRAME_DEFINITION===
-  Mat frame1, prvs; // "frame1" is the first frame
+  // ===FRAMES_DEFINITION===
+  Mat frame1, prvs; // "frame1" is the first source frame
   cap >> frame1;
-
   Mat segm_image; // "segm_image" is the first segmmap frame
   out_seg >> segm_image;
+
+  // ===COLOR_SEGMMAP_AND_CONVERT_FRAME_BGR2GRAY===
   Mat out_segmmap(frame1.rows, frame1.cols, CV_8UC3, Scalar(0, 0, 0));
   fill_out_segmmap(segm_image, out_segmmap); // Color the segmmap image
   cvtColor(frame1, prvs, COLOR_BGR2GRAY); // Convert to grayscale
+
+  // ===DEFINITIONS===
+  Mat frame, next;
+  Mat flow(out_segmmap.size(), CV_32FC2); // Create 2-channels Mat
+  Mat image_warped, draw;
+  Mat win_mat(cv::Size(1920, 600), CV_8UC3);
+
+  // ===CREATING_OPTWLOW_WITH_START_SETTINGS===
+  Ptr<cv::optflow::DISOpticalFlow> disof =
+      cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_MEDIUM);
+
   while (true)
   {
-    Mat frame, next; // "frame" are the second frame ect.
-    cap >> frame;
+    cap >> frame; // "frame" are the second frame ect.
+    if ( frame.empty() )
+    {
+      cout << "Warning: the frame is empty!" << endl;
+      break;
+    }
     cvtColor(frame, next, COLOR_BGR2GRAY); // Convert to grayscale
-    Mat flow(out_segmmap.size(), CV_32FC2); // Create 2-channels Mat
-    Ptr<cv::optflow::DISOpticalFlow> disof = cv::optflow::createOptFlow_DIS(cv::optflow::DISOpticalFlow::PRESET_MEDIUM);
+
     disof->calc(prvs, next, flow); // Optflow value calculation
-    Mat image_warped = create_image_warped(out_segmmap, flow);
+    image_warped = create_image_warped(out_segmmap, flow);
     out_segmmap = image_warped;
-    Mat draw = viz_flow(flow, frame, {}, 8); // Visualization Optflow
-    
+    draw = viz_flow(flow, frame, {}, 8); // Visualization Optflow
+
     // ===DISPLAY_TWO_SCREENS===
-    cv::Mat win_mat(cv::Size(1920, 600), CV_8UC3);
-    draw.copyTo(win_mat(cv::Rect(0, 0, 960, 600)));      // Copy small images into big mat
+    draw.copyTo(win_mat(cv::Rect(0, 0, 960, 600)));         // Copy small images into big mat
     out_segmmap.copyTo(win_mat(cv::Rect(960, 0, 960, 600)));
     cv::imshow("Images", win_mat);                          // Display big mat
 
     // ===WRITE_VIDEO===
     video.write(win_mat);
     char c = (char)waitKey(33);
-    if( c == 27 ) break;
+    if( c == key_Escape ) break; // Instead of "27" from "enum Key"
   }
   destroyAllWindows();
   return 0;
