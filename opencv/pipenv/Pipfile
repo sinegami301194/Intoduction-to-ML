@@ -1,0 +1,20 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+cv2 = "*"
+pytest = "*"
+
+[packages]
+matplotlib = "*"
+ipython = "*"
+pandas = "*"
+tensorflow = "==1.14.0"
+numpy = "==1.16.4"
+opencv-python = "*"
+cv2 = "*"
+
+[requires]
+python_version = "3.6"
