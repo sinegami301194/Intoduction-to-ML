@@ -1,0 +1,3 @@
+cd work/Develop/python/ipy
+pipenv shell
+ipython
