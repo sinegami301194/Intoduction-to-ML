@@ -3,3 +3,7 @@
 cd work/Develop/python/ipy
 pipenv shell
 ipython
+
+pipenv install ipython
+pipenv install tensorflow==1.14.0
+pipenv install opencv-python
