@@ -324,4 +324,5 @@ Day 294: Протягивал plannerServiceFrame в daq для отписыва
 Day 295: Заполнял plannerServiceFrame.
 Day 296: Заполнял plannerServiceFrame.
 Day 297: Выезд в депо. Разбирался с ошибкой компиляции.
-Day 298: Разбирался с ошибкой компиляции.
+Day 298: Разбирался с ошибкой компиляции. Переносил PlannerServiceFrame в ядро системы.
+Day 299: Переносил PlannerServiceFrame в ядро системы.
