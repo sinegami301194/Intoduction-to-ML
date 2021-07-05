@@ -1,0 +1,11 @@
+git clone <link>
+
+cd directory/
+
+git status
+
+git add <param1> <param2> ...
+
+git commit -a -m "comment"
+
+git push
