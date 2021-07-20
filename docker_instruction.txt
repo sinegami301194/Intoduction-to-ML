@@ -1,2 +1,8 @@
 # Просмотр образов
 docker images 
+
+# Запуск контейнера с конкретным образом и версией
+docker run -t -i ubuntu:14.04 /bin/bash
+
+# Загрузка образа
+docker pull image_name
