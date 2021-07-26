@@ -9,3 +9,14 @@ git add <param1> <param2> ...
 git commit -a -m "comment"
 
 git push
+
+_______________________________
+
+Добавление git submodules
+git submodule add https://github.com/nlohmann/json.git
+
+Клонирование репозитория с git submodules
+git clone --recurse-submodules https://gitlab.cognitivepilot.com/ar13/grain/engine.git
+
+
+
