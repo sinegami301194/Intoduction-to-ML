@@ -1,4 +1,4 @@
-# 
+# Генерация Docker-контейнера.
 
 1. Выкачиваем minimal-versions.
 git clone <url_to_minimal-versions>
