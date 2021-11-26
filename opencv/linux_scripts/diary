@@ -648,4 +648,5 @@ Day 587: Деффектовка зернового терминала.
 Day 588: Поиск и устранение багов в equidistant_trajectories_gui.
 Day 589: Поиск и устранение багов в equidistant_trajectories_gui.
 Day 590: Поиск и устранение багов в equidistant_trajectories_gui.
-Day 591: Поиск и устранение багов в equidistant_trajectories_gui.
+Day 591: Поиск и устранение багов в equidistant_trajectories_gui. Добавил методы в класс BSpline.
+Day 592: Поиск и устранение багов в equidistant_trajectories_gui.
