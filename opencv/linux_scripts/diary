@@ -708,3 +708,4 @@ Day 641: Рефакторинг equidistant_trajectories_gui.
 Day 642: Рефакторинг equidistant_trajectories_gui.
 Day 643: Реализация автосохранения части настроек gui через QSettings.
 Day 644: Реализация автосохранения части настроек gui через QSettings.
+Day 645: CI / CD with Docker.
