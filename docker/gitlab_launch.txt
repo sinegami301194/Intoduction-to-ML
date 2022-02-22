@@ -1,0 +1,22 @@
+1.
+
+sudo docker run --detach \
+  --hostname gitlab.example.com \
+  --publish 443:443 --publish 80:80 --publish 22:22 \
+  --name gitlab \
+  --restart always \
+  --volume $GITLAB_HOME/config:/etc/gitlab \
+  --volume $GITLAB_HOME/logs:/var/log/gitlab \
+  --volume $GITLAB_HOME/data:/var/opt/gitlab \
+  --shm-size 256m \
+  gitlab/gitlab-ee:latest
+  
+  We need wait until gitlab is installing
+
+2.
+
+sudo docker logs -f gitlab
+
+3. 
+
+sudo docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
